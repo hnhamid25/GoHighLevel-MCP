@@ -1,23 +1,19 @@
-# Ignore source files - we only need compiled output
+# Ignore source files - use pre-built dist
 src/
 tests/
 *.ts
-!dist/
-
-# Ignore development files
-node_modules/
-.env
-.env.local
-*.log
-
-# Ignore git files
-.git/
-.gitignore
-
-# Ignore config files not needed for runtime
 tsconfig.json
 jest.config.js
-nodemon.json
 
-# Keep the old demo file for now
-!api/index.js
+# Ignore development files
+.env
+.env.local
+.env.example
+*.log
+node_modules/
+
+# Keep only necessary files
+!dist/
+!api/
+!package.json
+!package-lock.json
