@@ -15,7 +15,7 @@ yarn-error.log*
 cursor-mcp-config.json
 
 # Build output
-dist/
+# dist/  # Commented out to include compiled files for Vercel
 build/
 
 # IDE files
