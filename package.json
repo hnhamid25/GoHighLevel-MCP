@@ -20,7 +20,7 @@
     "start": "node dist/http-server.js",
     "start:stdio": "node dist/server.js",
     "start:http": "node dist/http-server.js",
-    "vercel-build": "npm run build",
+    "vercel-build": "npm install && npm run build",
     "prepublishOnly": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch",

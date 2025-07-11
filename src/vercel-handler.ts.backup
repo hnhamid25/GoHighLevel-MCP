@@ -1,0 +1,258 @@
+/**
+ * Vercel Handler for GoHighLevel MCP Server
+ * Wraps the full MCP server implementation for Vercel deployment
+ */
+
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { 
+  CallToolRequestSchema,
+  ErrorCode,
+  ListToolsRequestSchema,
+  McpError 
+} from '@modelcontextprotocol/sdk/types.js';
+import * as dotenv from 'dotenv';
+import type { IncomingMessage, ServerResponse } from 'http';
+
+import { GHLApiClient } from './clients/ghl-api-client';
+import { ContactTools } from './tools/contact-tools';
+import { ConversationTools } from './tools/conversation-tools';
+import { BlogTools } from './tools/blog-tools';
+import { OpportunityTools } from './tools/opportunity-tools';
+import { CalendarTools } from './tools/calendar-tools';
+import { EmailTools } from './tools/email-tools';
+import { LocationTools } from './tools/location-tools';
+import { EmailISVTools } from './tools/email-isv-tools';
+import { SocialMediaTools } from './tools/social-media-tools';
+import { MediaTools } from './tools/media-tools';
+import { ObjectTools } from './tools/object-tools';
+import { AssociationTools } from './tools/association-tools';
+import { CustomFieldV2Tools } from './tools/custom-field-v2-tools';
+import { WorkflowTools } from './tools/workflow-tools';
+import { SurveyTools } from './tools/survey-tools';
+import { StoreTools } from './tools/store-tools';
+import { ProductsTools } from './tools/products-tools';
+import { InvoicesTools } from './tools/invoices-tools';
+import { PaymentsTools } from './tools/payments-tools';
+import { GHLConfig } from './types/ghl-types';
+
+// Load environment variables
+dotenv.config();
+
+/**
+ * Create HTTP handler for Vercel
+ */
+export function createHTTPHandler() {
+  // Initialize all components
+  const server = new Server(
+    {
+      name: 'ghl-mcp-server',
+      version: '1.0.0',
+    },
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
+
+  // Initialize GHL API client
+  const config: GHLConfig = {
+    accessToken: process.env.GHL_API_KEY || '',
+    baseUrl: process.env.GHL_BASE_URL || 'https://services.leadconnectorhq.com',
+    version: '2021-07-28',
+    locationId: process.env.GHL_LOCATION_ID || ''
+  };
+
+  if (!config.accessToken) {
+    console.error('GHL_API_KEY environment variable is required');
+  }
+
+  if (!config.locationId) {
+    console.error('GHL_LOCATION_ID environment variable is required');
+  }
+
+  const ghlClient = new GHLApiClient(config);
+
+  // Initialize all tool modules
+  const contactTools = new ContactTools(ghlClient);
+  const conversationTools = new ConversationTools(ghlClient);
+  const blogTools = new BlogTools(ghlClient);
+  const opportunityTools = new OpportunityTools(ghlClient);
+  const calendarTools = new CalendarTools(ghlClient);
+  const emailTools = new EmailTools(ghlClient);
+  const locationTools = new LocationTools(ghlClient);
+  const emailISVTools = new EmailISVTools(ghlClient);
+  const socialMediaTools = new SocialMediaTools(ghlClient);
+  const mediaTools = new MediaTools(ghlClient);
+  const objectTools = new ObjectTools(ghlClient);
+  const associationTools = new AssociationTools(ghlClient);
+  const customFieldV2Tools = new CustomFieldV2Tools(ghlClient);
+  const workflowTools = new WorkflowTools(ghlClient);
+  const surveyTools = new SurveyTools(ghlClient);
+  const storeTools = new StoreTools(ghlClient);
+  const productsTools = new ProductsTools(ghlClient);
+  const invoicesTools = new InvoicesTools(ghlClient);
+  const paymentsTools = new PaymentsTools(ghlClient);
+
+  // Setup MCP handlers
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    console.log('[GHL MCP] Listing available tools...');
+    
+    try {
+      // Collect all tool definitions
+      const allTools = [
+        ...contactTools.getToolDefinitions(),
+        ...conversationTools.getToolDefinitions(),
+        ...blogTools.getToolDefinitions(),
+        ...opportunityTools.getToolDefinitions(),
+        ...calendarTools.getToolDefinitions(),
+        ...emailTools.getToolDefinitions(),
+        ...locationTools.getToolDefinitions(),
+        ...emailISVTools.getToolDefinitions(),
+        ...socialMediaTools.getTools(),
+        ...mediaTools.getToolDefinitions(),
+        ...objectTools.getToolDefinitions(),
+        ...associationTools.getTools(),
+        ...customFieldV2Tools.getTools(),
+        ...workflowTools.getTools(),
+        ...surveyTools.getTools(),
+        ...storeTools.getTools(),
+        ...productsTools.getTools(),
+        ...invoicesTools.getTools(),
+        ...paymentsTools.getTools()
+      ];
+      
+      console.log(`[GHL MCP] Registered ${allTools.length} tools total`);
+      
+      return {
+        tools: allTools
+      };
+    } catch (error) {
+      console.error('[GHL MCP] Error listing tools:', error);
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Failed to list tools: ${error}`
+      );
+    }
+  });
+
+  // Setup tool execution handler
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    
+    console.log(`[GHL MCP] Executing tool: ${name}`);
+
+    try {
+      // Route to appropriate tool handler based on tool name prefix
+      let result: any;
+
+      if (name.startsWith('ghl_contact_')) {
+        result = await contactTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_conversation_')) {
+        result = await conversationTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_blog_')) {
+        result = await blogTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_opportunity_')) {
+        result = await opportunityTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_calendar_')) {
+        result = await calendarTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_email_')) {
+        result = await emailTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_location_')) {
+        result = await locationTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_email_isv_')) {
+        result = await emailISVTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_social_media_')) {
+        result = await socialMediaTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_media_')) {
+        result = await mediaTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_object_')) {
+        result = await objectTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_association_')) {
+        result = await associationTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_custom_field_v2_')) {
+        result = await customFieldV2Tools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_workflow_')) {
+        result = await workflowTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_survey_')) {
+        result = await surveyTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_store_')) {
+        result = await storeTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_products_')) {
+        result = await productsTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_invoices_')) {
+        result = await invoicesTools.executeTool(name, args || {});
+      } else if (name.startsWith('ghl_payments_')) {
+        result = await paymentsTools.executeTool(name, args || {});
+      } else {
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `Unknown tool: ${name}`
+        );
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      console.error(`[GHL MCP] Error executing tool ${name}:`, error);
+      
+      if (error instanceof McpError) {
+        throw error;
+      }
+      
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Tool execution failed: ${error}`
+      );
+    }
+  });
+
+  // Return Vercel-compatible handler
+  return async (req: IncomingMessage, res: ServerResponse) => {
+    console.log(`[GHL MCP] ${req.method} ${req.url}`);
+
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
+
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 200;
+      res.end();
+      return;
+    }
+
+    // Health check
+    if (req.url === '/' || req.url === '/health') {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        status: 'healthy',
+        server: 'ghl-mcp-server',
+        version: '1.0.0',
+        tools: 269,
+        endpoint: '/sse'
+      }));
+      return;
+    }
+
+    // SSE endpoint
+    if (req.url === '/sse') {
+      const transport = new SSEServerTransport(req, res);
+      await server.connect(transport);
+      return;
+    }
+
+    // 404 for other routes
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: 'Not found' }));
+  };
+}

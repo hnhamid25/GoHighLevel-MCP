@@ -1,0 +1,23 @@
+# Ignore source files - we only need compiled output
+src/
+tests/
+*.ts
+!dist/
+
+# Ignore development files
+node_modules/
+.env
+.env.local
+*.log
+
+# Ignore git files
+.git/
+.gitignore
+
+# Ignore config files not needed for runtime
+tsconfig.json
+jest.config.js
+nodemon.json
+
+# Keep the old demo file for now
+!api/index.js
