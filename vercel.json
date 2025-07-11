@@ -1,13 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "echo 'Skipping build - using pre-compiled files'",
-  "outputDirectory": ".",
-  "functions": {
-    "api/server.js": {
-      "maxDuration": 60
+  "builds": [
+    {
+      "src": "api/server.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "routes": [
-    { "src": "/(.*)", "dest": "/api/server.js" }
+    {
+      "src": "/(.*)",
+      "dest": "/api/server.js"
+    }
   ]
 }
